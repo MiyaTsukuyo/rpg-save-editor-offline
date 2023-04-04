@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<style>
+    .block_div {
+        display: block;
+        width: 70%;
+        margin-left: 15%;
+        margin-top: 40px;
+        height: 100%;
+        /*垂直居中*/
+        text-align: center;
+        vertical-align: center;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        /*圆角外边框*/
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        /*背景*/
+        background-color: #fff;
+    }
+</style>
+<script src="https://cdn.bootcss.com/lz-string/1.4.4/lz-string.js"></script>
+<script type="application/javascript">
+
+    let de_all_content, json_selector, file_name;
+    //初始化
+    window.onload = function () {
+        //获取屏幕高度
+        let height = window.screen.height;
+        //设置file_encrypt_content高度
+        document.getElementById("file_encrypt_content").style.height = height - 300 + "px";
+        document.getElementById("file_encrypt_content").value = "";
+    };
+
+    //选取文件
+    function read_new_file() {
+        const file = document.getElementById("old_save_file").files[0];
+        file_name = file.name;
+        console.log("read file " + file_name);
+        const reader = new FileReader();
+        reader.readAsText(file);
+        reader.onload = function () {
+            let content = reader.result;
+            //LZString解密
+            de_all_content = LZString.decompressFromBase64(content);
+            editContent();
+        }
+    }
+
+    //json_selector监听器
+    function filter_content(event) {
+        if (event.key === "Enter") {
+            save_content();
+            editContent();
+        }
+    }
+
+    //修改file_encrypt_content内容
+    function editContent() {
+        json_selector = document.getElementById("json_selector").value;
+        if (json_selector.length === 0) {
+            json_selector = "$.party";
+        }
+        const json_selector_split = json_selector.split(".");
+        let json_content = JSON.parse(de_all_content);
+        if (json_selector_split[0] !== "$") {
+            return;
+        }
+        for (let i = 1; i < json_selector_split.length; i++) {
+            if (json_content[json_selector_split[i]] !== undefined) {
+                json_content = json_content[json_selector_split[i]];
+            } else {
+                alert("json提取器错误");
+            }
+        }
+        document.getElementById("file_encrypt_content").value = JSON.stringify(json_content, null, 4);
+    }
+
+    //导出文件
+    function export_file() {
+        if (file_name === undefined || file_name.length === 0) {
+            alert("请先选择文件");
+            return;
+        }
+        save_content();
+        const en_content = LZString.compressToBase64(de_all_content);
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(en_content));
+        element.setAttribute('download', file_name);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+
+    //存入de_all_content
+    function save_content() {
+        const json_selector_split = json_selector.split(".");
+        let json_content = JSON.parse(de_all_content);
+        if (json_selector_split[0] !== "$") {
+            return;
+        }
+        for (let i = 1; i < json_selector_split.length - 1; i++) {
+            if (json_content[json_selector_split[i]] !== undefined) {
+                json_content = json_content[json_selector_split[i]];
+            } else {
+                alert("json提取器错误");
+            }
+        }
+        json_content[json_selector_split[json_selector_split.length - 1]] = JSON.parse(document.getElementById("file_encrypt_content").value);
+        de_all_content = JSON.stringify(json_content);
+    }
+</script>
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="file_chose_drop_area" class="block_div">
+    <input type="file" name="选择文件" id="old_save_file" onchange="read_new_file()">
+    <button id="export_file" onclick="export_file()">导出</button>
+</div>
+
+<div id="file_encrypt_div" class="block_div">
+    <label for="file_encrypt_content">
+        <input id="json_selector" style="width: 80%" placeholder="json提取器，默认$.party"
+               onkeydown="filter_content(event)">
+    </label>
+    <textarea id="file_encrypt_content" style="width: 80%; white-space: pre;"></textarea>
+</div>
+</body>
+</html>
